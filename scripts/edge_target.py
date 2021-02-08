@@ -32,11 +32,9 @@ class magnum_cache:
             self.host, self.nature, self.cluster_ip
         )
 
-        print(self.cache_url)
-
     def cache_fetch(self):
 
-        response = requests.get(self.cache_url, verify=False, timeout=30.0)
+        response = requests.get(self.cache_url, verify=False, timeout=15.0)
 
         return json.loads(response.text)
 
@@ -57,26 +55,78 @@ class magnum_cache:
                     if device["device"] in ["EXE", "IPX"]:
                         ipg_ip_db.append(device["control-2-address"]["host"])
 
-            print(len(ipg_ip_db))
-            print(ipg_ip_db)
+            return ipg_ip_db
+
+
+class edge:
+    def __init__(self, **kwargs):
+
+        severity = {
+            "Emergency": 0,
+            "Alert": 1,
+            "Critical": 2,
+            "Error": 3,
+            "Warning": 4,
+            "Notice": 5,
+            "Informational": 6,
+            "Debug": 7,
+        }
+
+        self.enable = {"id": "14.0@i", "name": "Enable", type: "integer", "value": 0}
+
+        self.destination_ip = {
+            "id": "15.0@s",
+            "name": "Destination IP Address",
+            type: "string",
+            "value": kwargs["destination_ip"],
+        }
+
+        self.udp_port = {
+            "id": "16.0@i",
+            "name": "UDP Port",
+            type: "integer",
+            "value": kwargs["udp_port"],
+        }
+
+        self.physical_port = {
+            "id": "13.0@i",
+            "name": "Physical Port",
+            type: "integer",
+            "value": kwargs["physical_port"],
+        }
+
+        self.level = {
+            "id": "17.0@i",
+            "name": "Level",
+            type: "integer",
+            "value": severity[kwargs["severity"]],
+        }
+
+        if "magnum" in kwargs.keys():
+
+            collector = magnum_cache(**kwargs["magnum"])
+
+            self.ip_list = collector.catalog_cache()
+
+            print(self.ip_list)
 
 
 def main():
 
     params = {
-        "host": "10.10.232.25",
-        "nature": "mag-1",
-        "cluster_ip": "10.10.232.16",
-        "edge_matches": ["3067VIP10G-3G"],
+        "magnum": {
+            "host": "10.10.232.25",
+            "nature": "mag-1",
+            "cluster_ip": "10.10.232.16",
+            "edge_matches": ["3067VIP10G-3G"],
+        },
         "destination_ip": "127.0.0.1",
         "udp_port": 514,
         "physical_port": 1,
         "severity": "Warning",
     }
 
-    collector = magnum_cache(**params)
-
-    collector.catalog_cache()
+    edge_setter = edge(**params)
 
 
 if __name__ == "__main__":
