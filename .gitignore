@@ -4,3 +4,4 @@ __pycache__
 debug.log
 json_file.json
 api_status.py
+edge_test.py
