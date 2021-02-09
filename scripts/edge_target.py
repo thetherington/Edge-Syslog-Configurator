@@ -72,35 +72,43 @@ class edge:
             "Debug": 7,
         }
 
-        self.enable = {"id": "14.0@i", "name": "Enable", type: "integer", "value": 0}
+        self.enable = {"id": "14.0@i", "name": "Enable", "type": "integer", "value": 1}
 
         self.destination_ip = {
             "id": "15.0@s",
             "name": "Destination IP Address",
-            type: "string",
+            "type": "string",
             "value": kwargs["destination_ip"],
         }
 
         self.udp_port = {
             "id": "16.0@i",
             "name": "UDP Port",
-            type: "integer",
+            "type": "integer",
             "value": kwargs["udp_port"],
         }
 
         self.physical_port = {
             "id": "13.0@i",
             "name": "Physical Port",
-            type: "integer",
+            "type": "integer",
             "value": kwargs["physical_port"],
         }
 
         self.level = {
             "id": "17.0@i",
             "name": "Level",
-            type: "integer",
+            "type": "integer",
             "value": severity[kwargs["severity"]],
         }
+
+        self.parameters = [
+            self.enable,
+            self.destination_ip,
+            self.udp_port,
+            self.physical_port,
+            self.level,
+        ]
 
         if "magnum" in kwargs.keys():
 
@@ -108,25 +116,69 @@ class edge:
 
             self.ip_list = collector.catalog_cache()
 
-            print(self.ip_list)
+        self.proto = kwargs["proto"]
+
+    def fetch(self, address, parameters):
+
+        try:
+
+            with requests.Session() as session:
+
+                ## get the session ID from accessing the login.php site
+                resp = session.get(
+                    "%s://%s/login.php" % (self.proto, address), verify=False, timeout=30.0,
+                )
+
+                sessionID = resp.headers["Set-Cookie"].split(";")[0]
+
+                payload = {
+                    "jsonrpc": "2.0",
+                    "method": "set",
+                    "params": {"parameters": parameters},
+                    "id": 1,
+                }
+
+                url = "%s://%s/cgi-bin/cfgjsonrpc" % (self.proto, address)
+
+                headers = {
+                    "Content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+                    "Cookie": sessionID + "; webeasy-loggedin=true",
+                }
+
+                response = session.post(
+                    url, headers=headers, data=json.dumps(payload), verify=False, timeout=30.0,
+                )
+
+                return json.loads(response.text)
+
+        except Exception as error:
+            print(error)
+            return error
 
 
 def main():
 
     params = {
         "magnum": {
-            "host": "10.10.232.25",
+            "host": "192.168.42.91",
             "nature": "mag-1",
-            "cluster_ip": "10.10.232.16",
-            "edge_matches": ["3067VIP10G-3G"],
+            "cluster_ip": "192.168.0.250",
+            "edge_matches": ["570J2K"],
         },
-        "destination_ip": "127.0.0.1",
+        "destination_ip": "192.168.42.91",
         "udp_port": 514,
-        "physical_port": 1,
+        "physical_port": 2,
         "severity": "Warning",
+        "proto": "http",
     }
 
     edge_setter = edge(**params)
+
+    print(edge_setter.ip_list)
+
+    for ip in edge_setter.ip_list:
+
+        print(ip, edge_setter.fetch(ip, edge_setter.parameters))
 
 
 if __name__ == "__main__":
